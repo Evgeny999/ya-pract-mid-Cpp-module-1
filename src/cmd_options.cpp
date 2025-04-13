@@ -30,7 +30,12 @@ bool ProgramOptions::Parse(int argc, char *argv[]) {
 
         if (vm.count("command")) {
             std::string stringCommand = vm["command"].as<std::string>();
-            command_ = commandMapping_.at(stringCommand);
+            try {
+                command_ = commandMapping_.at(stringCommand);
+            } catch (...) {
+                std::cout << "No such command\n";
+                return false;
+            }
             std::cout << "Command is " << stringCommand << ".\n";
         } else {
             std::cout << "Command was not specified\n";

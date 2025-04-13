@@ -28,7 +28,11 @@ int main(int argc, char *argv[]) {
             std::ofstream outputFile(options.GetOutputFile());
             std::stringstream inputSstream, outputSstream;
             inputSstream << inputFile.rdbuf();
-            cryptoCtx.EncryptFile(inputSstream, outputSstream, options.GetPassword());
+            try {
+                cryptoCtx.EncryptFile(inputSstream, outputSstream, options.GetPassword());
+            } catch (...) {
+                std::print("Failed to encode file");
+            }
             std::print("File encoded successfully. Result: {}", outputSstream.str());
             outputFile << outputSstream.rdbuf();
             break;
@@ -38,14 +42,26 @@ int main(int argc, char *argv[]) {
             std::ofstream outputFile(options.GetOutputFile());
             std::stringstream inputSstream, outputSstream;
             inputSstream << inputFile.rdbuf();
-            cryptoCtx.DecryptFile(inputSstream, outputSstream, options.GetPassword());
+            try {
+                cryptoCtx.DecryptFile(inputSstream, outputSstream, options.GetPassword());
+            } catch (...) {
+                std::print("Failed to decode file");
+            }
             std::print("File decoded successfully. Result: {}", outputSstream.str());
             outputFile << outputSstream.rdbuf();
             break;
         }
-        case COMMAND_TYPE::CHECKSUM:
-            std::print("Checksum: {}\n", "CHECKSUM_NOT_IMPLEMENTED");
+        case COMMAND_TYPE::CHECKSUM: {
+            std::ifstream inputFile(options.GetInputFile());
+            std::stringstream inputSstream;
+            inputSstream << inputFile.rdbuf();
+            try {
+                std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(inputSstream));
+            } catch (...) {
+                std::print("Failed to calculate checksum");
+            }
             break;
+        }
 
         default:
             throw std::runtime_error{"Unsupported command"};

@@ -2,6 +2,7 @@
 #include "crypto_guard_ctx.h"
 
 #include <array>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
         CryptoGuard::CryptoGuardCtx cryptoCtx;
 
         if (!options.Parse(argc, argv)) {
-            return 0;
+            return 1;
         }
 
         using COMMAND_TYPE = CryptoGuard::ProgramOptions::COMMAND_TYPE;
@@ -30,10 +31,10 @@ int main(int argc, char *argv[]) {
             inputSstream << inputFile.rdbuf();
             try {
                 cryptoCtx.EncryptFile(inputSstream, outputSstream, options.GetPassword());
-            } catch (...) {
-                std::print("Failed to encode file");
+            } catch (const std::exception &e) {
+                std::print("Failed to encode file: {}", e.what());
             }
-            std::print("File encoded successfully. Result: {}", outputSstream.str());
+            std::print("File encoded successfully", outputSstream.str());
             outputFile << outputSstream.rdbuf();
             break;
         }
@@ -44,10 +45,10 @@ int main(int argc, char *argv[]) {
             inputSstream << inputFile.rdbuf();
             try {
                 cryptoCtx.DecryptFile(inputSstream, outputSstream, options.GetPassword());
-            } catch (...) {
-                std::print("Failed to decode file");
+            } catch (const std::exception &e) {
+                std::print("Failed to decrypt file: {}", e.what());
             }
-            std::print("File decoded successfully. Result: {}", outputSstream.str());
+            std::print("File decoded successfully", outputSstream.str());
             outputFile << outputSstream.rdbuf();
             break;
         }
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     } catch (const std::exception &e) {
         std::print(std::cerr, "Error: {}\n", e.what());
-        return 1;
+        return 2;
     }
 
     return 0;

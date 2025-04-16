@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <ostream>
+#include <print>
 #include <string>
 
 namespace po = boost::program_options;
@@ -33,43 +34,39 @@ bool ProgramOptions::Parse(int argc, char *argv[]) {
             try {
                 command_ = commandMapping_.at(stringCommand);
             } catch (...) {
-                std::cout << "No such command\n";
+                std::print("No such command\n");
                 return false;
             }
-            std::cout << "Command is " << stringCommand << ".\n";
         } else {
-            std::cout << "Command was not specified\n";
+            std::print("Command was not specified\n");
             return false;
         }
 
         if (vm.count("input")) {
             inputFile_ = vm["input"].as<std::string>();
-            std::cout << "Input file is " << inputFile_ << ".\n";
         } else {
-            std::cout << "Input file was not set.\n";
+            std::print("Input file was not set.\n");
             return false;
         }
 
         if (command_ != COMMAND_TYPE::CHECKSUM) {
             if (vm.count("output")) {
                 outputFile_ = vm["output"].as<std::string>();
-                std::cout << "Output file is " << outputFile_ << ".\n";
             } else {
-                std::cout << "Output file was not set.\n";
+                std::print("Output file was not set.\n");
                 return false;
             }
 
             if (vm.count("password")) {
                 password_ = vm["password"].as<std::string>();
-                std::cout << "Password is " << password_ << ".\n";
             } else {
-                std::cout << "Password was not set.\n";
+                std::print("Password was not set.\n");
                 return false;
             }
         }
 
     } catch (std::exception &e) {
-        std::cout << "Error parsing arguments: " << e.what() << "\n";
+        std::print("Error parsing arguments: {}\n", e.what());
         return false;
     }
 

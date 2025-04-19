@@ -10,8 +10,9 @@ namespace CryptoGuard {
 
 ProgramOptions::ProgramOptions() : desc_("Allowed options") {
 
-    desc_.add_options()("help", "produce help message")("command", po::value<std::string>(), "command to execute")(
-        "input,i", po::value<std::string>(), "path to input file")(
+    desc_.add_options()("help", "produce help message")("command", po::value<std::string>()->required(),
+                                                        "command to execute")(
+        "input,i", po::value<std::string>()->required(), "path to input file")(
         "output,o", po::value<std::string>(), "path to file with result")("password,p", po::value<std::string>(),
                                                                           "password for encryption and decryption");
 }
@@ -29,23 +30,13 @@ bool ProgramOptions::Parse(int argc, char *argv[]) {
             return true;
         }
 
-        if (vm.count("command")) {
-            std::string stringCommand = vm["command"].as<std::string>();
-            try {
-                command_ = commandMapping_.at(stringCommand);
-            } catch (...) {
-                std::print("No such command\n");
-                return false;
-            }
-        } else {
-            std::print("Command was not specified\n");
-            return false;
-        }
+        inputFile_ = vm["input"].as<std::string>();
 
-        if (vm.count("input")) {
-            inputFile_ = vm["input"].as<std::string>();
+        std::string stringCommand = vm["command"].as<std::string>();
+        if (auto it = commandMapping_.find(stringCommand); it != commandMapping_.end()) {
+            command_ = it->second;
         } else {
-            std::print("Input file was not set.\n");
+            std::print("No such command\n");
             return false;
         }
 

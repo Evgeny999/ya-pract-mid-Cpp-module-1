@@ -1,5 +1,6 @@
 #include "crypto_guard_ctx.h"
 
+#include <format>
 #include <stdexcept>
 #include <string.h>
 
@@ -43,7 +44,7 @@ public:
 void CryptoGuardCtx::Impl::EncryptDecryptFileImpl(std::iostream &inStream, std::iostream &outStream,
                                                   std::string_view password, int enc) {
     if (!inStream.good() && !outStream.good()) {
-        throw std::runtime_error("io stream error");
+        throw std::runtime_error(std::format("Failed to {} file: io stream error", enc == 1 ? "encrypt" : "decrypt"));
     }
 
     std::unique_ptr<EVP_CIPHER_CTX, decltype([](EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_free(ctx); })> ctx(
@@ -56,31 +57,34 @@ void CryptoGuardCtx::Impl::EncryptDecryptFileImpl(std::iostream &inStream, std::
 
     if (EVP_CipherInit_ex(ctx.get(), params.cipher, nullptr, params.key.data(), params.iv.data(), params.encrypt) ==
         0) {
-        throw std::runtime_error("call EVP_CipherInit_ex failure");
+        throw std::runtime_error(
+            std::format("Failed to {} file: call EVP_CipherInit_ex failure", enc == 1 ? "encrypt" : "decrypt"));
     }
 
-    std::vector<unsigned char> inBuf;
-    char c;
-    while (inStream.get(c)) {
-        inBuf.push_back(c);
-    }
+    inStream.ignore(std::numeric_limits<std::streamsize>::max());
+    std::streamsize length = inStream.gcount();
+    inStream.clear();  //  Since ignore will have set eof.
+    inStream.seekg(0, std::ios_base::beg);
+    std::vector<unsigned char> inBuf(length);
+
+    inStream.read(reinterpret_cast<char *>(inBuf.data()), length);
+
     std::vector<unsigned char> outBuf(inBuf.size() + EVP_MAX_BLOCK_LENGTH);
-    int outLen;
+    int outLen = 0;
 
     if (EVP_CipherUpdate(ctx.get(), outBuf.data(), &outLen, inBuf.data(), inBuf.size()) == 0) {
-        throw std::runtime_error("call EVP_CipherUpdate failure");
-    }
-    for (int i = 0; i < outLen; ++i) {
-        output.push_back(outBuf[i]);
+        throw std::runtime_error(
+            std::format("Failed to {} file: call EVP_CipherUpdate failure", enc == 1 ? "encrypt" : "decrypt"));
     }
 
+    outStream.write(reinterpret_cast<char *>(outBuf.data()), outLen);
+
     if (EVP_CipherFinal_ex(ctx.get(), outBuf.data(), &outLen) == 0) {
-        throw std::runtime_error("call EVP_CipherFinal_ex failure");
+        throw std::runtime_error(
+            std::format("Failed to {} file: call EVP_CipherFinal_ex failure", enc == 1 ? "encrypt" : "decrypt"));
     }
-    for (int i = 0; i < outLen; ++i) {
-        output.push_back(outBuf[i]);
-    }
-    outStream << output;
+
+    outStream.write(reinterpret_cast<char *>(outBuf.data()), outLen);
 }
 
 void CryptoGuardCtx::Impl::EncryptFile(std::iostream &inStream, std::iostream &outStream, std::string_view password) {
@@ -93,27 +97,29 @@ void CryptoGuardCtx::Impl::DecryptFile(std::iostream &inStream, std::iostream &o
 
 std::string CryptoGuardCtx::Impl::CalculateChecksum(std::iostream &inStream) {
     if (!inStream.good()) {
-        throw std::runtime_error("input stream failure");
+        throw std::runtime_error("Failed to calculate checksum: input stream failure");
     }
     std::unique_ptr<EVP_MD_CTX, decltype([](EVP_MD_CTX *ctx) { EVP_MD_CTX_free(ctx); })> ctx(EVP_MD_CTX_new());
 
-    std::vector<unsigned char> inBuf;
-    char c;
-    while (inStream.get(c)) {
-        inBuf.push_back(c);
-    }
-    std::vector<unsigned char> outBuf(EVP_MAX_MD_SIZE);
-    int outLen;
-    unsigned int md_len;
+    inStream.ignore(std::numeric_limits<std::streamsize>::max());
+    std::streamsize length = inStream.gcount();
+    inStream.clear();  //  Since ignore will have set eof.
+    inStream.seekg(0, std::ios_base::beg);
+    std::vector<unsigned char> inBuf(length), outBuf(EVP_MAX_MD_SIZE);
+
+    inStream.read(reinterpret_cast<char *>(inBuf.data()), length);
+
+    int outLen = 0;
+    unsigned int md_len = 0;
 
     if (EVP_DigestInit_ex(ctx.get(), EVP_sha256(), NULL) == 0) {
-        throw std::runtime_error("call EVP_DigestInit_ex failure");
+        throw std::runtime_error("Failed to calculate checksum: call EVP_DigestInit_ex failure");
     }
     if (EVP_DigestUpdate(ctx.get(), inBuf.data(), inBuf.size()) == 0) {
-        throw std::runtime_error("call EVP_DigestUpdate failure");
+        throw std::runtime_error("Failed to calculate checksum: call EVP_DigestUpdate failure");
     }
     if (EVP_DigestFinal_ex(ctx.get(), outBuf.data(), &md_len) == 0) {
-        throw std::runtime_error("call EVP_DigestFinal_ex failure");
+        throw std::runtime_error("Failed to calculate checksum: call EVP_DigestFinal_ex failure");
     }
 
     std::stringstream outputSs;

@@ -25,42 +25,22 @@ int main(int argc, char *argv[]) {
         using COMMAND_TYPE = CryptoGuard::ProgramOptions::COMMAND_TYPE;
         switch (options.GetCommand()) {
         case COMMAND_TYPE::ENCRYPT: {
-            std::ifstream inputFile(options.GetInputFile());
-            std::ofstream outputFile(options.GetOutputFile());
-            std::stringstream inputSstream, outputSstream;
-            inputSstream << inputFile.rdbuf();
-            try {
-                cryptoCtx.EncryptFile(inputSstream, outputSstream, options.GetPassword());
-            } catch (const std::exception &e) {
-                std::print("Failed to encode file: {}", e.what());
-            }
-            std::print("File encoded successfully", outputSstream.str());
-            outputFile << outputSstream.rdbuf();
+            std::fstream inputFile(options.GetInputFile(), std::fstream::in);
+            std::fstream outputFile(options.GetOutputFile(), std::fstream::out);
+            cryptoCtx.EncryptFile(inputFile, outputFile, options.GetPassword());
+            std::print("File encoded successfully");
             break;
         }
         case COMMAND_TYPE::DECRYPT: {
-            std::ifstream inputFile(options.GetInputFile());
-            std::ofstream outputFile(options.GetOutputFile());
-            std::stringstream inputSstream, outputSstream;
-            inputSstream << inputFile.rdbuf();
-            try {
-                cryptoCtx.DecryptFile(inputSstream, outputSstream, options.GetPassword());
-            } catch (const std::exception &e) {
-                std::print("Failed to decrypt file: {}", e.what());
-            }
-            std::print("File decoded successfully", outputSstream.str());
-            outputFile << outputSstream.rdbuf();
+            std::fstream inputFile(options.GetInputFile(), std::fstream::in);
+            std::fstream outputFile(options.GetOutputFile(), std::fstream::out);
+            cryptoCtx.DecryptFile(inputFile, outputFile, options.GetPassword());
+            std::print("File decoded successfully");
             break;
         }
         case COMMAND_TYPE::CHECKSUM: {
-            std::ifstream inputFile(options.GetInputFile());
-            std::stringstream inputSstream;
-            inputSstream << inputFile.rdbuf();
-            try {
-                std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(inputSstream));
-            } catch (...) {
-                std::print("Failed to calculate checksum");
-            }
+            std::fstream inputFile(options.GetInputFile(), std::fstream::in);
+            std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(inputFile));
             break;
         }
 
